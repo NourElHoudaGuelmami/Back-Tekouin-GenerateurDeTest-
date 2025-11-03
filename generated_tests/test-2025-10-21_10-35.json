@@ -1,0 +1,92 @@
+{
+  "jd_id": "68f753ce4058dc73c13a5446",
+  "test_id": null,
+  "seniority": "expert",
+  "language": "English",
+  "num_questions": 5,
+  "generated_test": {
+    "questions": [
+      {
+        "question": "In a multithreaded Java program, which of the following methods is considered unsafe for suspending a thread and why?",
+        "choices": {
+          "A": "suspend()",
+          "B": "wait()",
+          "C": "sleep()",
+          "D": "yield()"
+        },
+        "correct_answer": "A",
+        "explanation": "The suspend() method is considered unsafe because it can cause deadlock conditions by holding locks that other threads might need.",
+        "category": "Multithreading",
+        "score": 20,
+        "estimated_time_seconds": 60
+      },
+      {
+        "question": "Given the following Java code snippet, identify the error and suggest a correction:\n\n```java\nclass Parent {\n    final void display() {\n        System.out.println(\"Parent Method\");\n    }\n}\n\nclass Child extends Parent {\n    void display() {\n        System.out.println(\"Child Method\");\n    }\n}\n```\n",
+        "choices": {
+          "A": "No error, the code will run successfully.",
+          "B": "The display method in Child cannot override the final method in Parent.",
+          "C": "The Child class should declare the display method as final.",
+          "D": "The Parent class should not have a final method."
+        },
+        "correct_answer": "B",
+        "explanation": "The display() method in Parent is declared as final, which means it cannot be overridden by any subclass.",
+        "category": "Object-Oriented Programming",
+        "score": 20,
+        "estimated_time_seconds": 60
+      },
+      {
+        "question": "Which JDBC driver type is known as the 'pure Java driver' and why is it preferred in Java applications?",
+        "choices": {
+          "A": "JDBC-ODBC Bridge driver",
+          "B": "Native-API driver",
+          "C": "Network Protocol driver",
+          "D": "Thin driver"
+        },
+        "correct_answer": "D",
+        "explanation": "The Thin driver is known as the 'pure Java driver' because it is implemented entirely in Java and is platform-independent, making it preferable for Java applications.",
+        "category": "Java Database Connectivity",
+        "score": 20,
+        "estimated_time_seconds": 60
+      },
+      {
+        "question": "Consider the following Java code:\n\n```java\npublic class Test {\n    public static void main(String[] args) {\n        String str1 = \"Hello\";\n        String str2 = new String(\"Hello\");\n        System.out.println(str1 == str2);\n        System.out.println(str1.equals(str2));\n    }\n}\n```\nWhat will be the output of this code and why?",
+        "choices": {
+          "A": "true true",
+          "B": "false false",
+          "C": "false true",
+          "D": "true false"
+        },
+        "correct_answer": "C",
+        "explanation": "The '==' operator compares object references, while the equals() method compares the content. str1 and str2 have the same content but are different objects.",
+        "category": "Java Memory and String Handling",
+        "score": 20,
+        "estimated_time_seconds": 60
+      },
+      {
+        "question": "Which of the following best describes the diamond problem in Java, and how is it resolved?",
+        "choices": {
+          "A": "It occurs with multiple inheritance of classes and is resolved using interfaces.",
+          "B": "It occurs with single inheritance and is resolved using abstract classes.",
+          "C": "It occurs with method overloading and is resolved using method overriding.",
+          "D": "It occurs with package conflicts and is resolved using import statements."
+        },
+        "correct_answer": "A",
+        "explanation": "The diamond problem occurs when a class inherits from multiple classes with the same method, leading to ambiguity. Java resolves this by allowing multiple inheritance only through interfaces.",
+        "category": "Inheritance",
+        "score": 20,
+        "estimated_time_seconds": 60
+      }
+    ],
+    "total_time_limit_minutes": 25,
+    "minimum_score_to_pass": 70,
+    "categories_summary": {
+      "Multithreading": 1,
+      "Object-Oriented Programming": 1,
+      "Java Database Connectivity": 1,
+      "Java Memory and String Handling": 1,
+      "Inheritance": 1
+    },
+    "estimated_total_time_minutes": 5,
+    "average_time_per_question_seconds": 60
+  }
+}
