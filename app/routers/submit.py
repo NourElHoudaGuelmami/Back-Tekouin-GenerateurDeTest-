@@ -45,6 +45,7 @@ async def submit_test(submission: TestSubmission):
     # call the scoring service
     result = scorer.calculate_score(submission.test, submission.answers)
     return result
+
 @router.post("/analyze-behavior")
 async def analyze_behavior(data: dict):
     behavior_data = data.get("behavior_data")

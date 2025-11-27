@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routers import upload, submit
+from app.routers import upload, submit, mock
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
@@ -25,5 +25,4 @@ async def root():
     return {"message": "Welcome to Job Test Generator"}
 app.include_router(upload.router, prefix="/api")
 app.include_router(submit.router, prefix="/api")
-
-
+app.include_router(mock.router, prefix="/api")  

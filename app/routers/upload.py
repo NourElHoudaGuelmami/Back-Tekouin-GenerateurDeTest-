@@ -37,7 +37,7 @@ async def upload_stream(
         return StreamingResponse(
             iter([f"data: Error reading file: {str(e)}\n\n"]),
             media_type="text/event-stream"
-        ) 
+        )
 
     #fct qui recoit le fichier deja charge
     async def generate_events():
@@ -112,8 +112,6 @@ async def upload_stream(
             yield f"data: Error: {str(e)}\n\n"
 
     return StreamingResponse(generate_events(), media_type="text/event-stream")
-
-
 
 # upload without SSE
 @router.post("/upload")
