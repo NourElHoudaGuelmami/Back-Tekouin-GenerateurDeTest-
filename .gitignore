@@ -12,3 +12,5 @@ __pycache__/
 
 # Autres fichiers temporaires
 *.log
+
+.md

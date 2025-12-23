@@ -20,6 +20,99 @@ save_dir = os.path.expanduser("~/Desktop/generated_tests")
 os.makedirs(save_dir, exist_ok=True)
 
 
+@router.post("/upload-stream2")
+async def upload_stream2(
+    request: Request,
+    course_file: UploadFile = File(...),
+    objectives_file: UploadFile = File(...),
+    seniority_input: str = Form(...),
+    language_input: str = Form(...),
+    number_of_questions: int = Form(30)
+):
+    try:
+        course_content = await course_file.read()
+        objectives_content = await objectives_file.read()
+    except Exception as e:
+        return StreamingResponse(
+            iter([f"data: Error reading files: {str(e)}\n\n"]),
+            media_type="text/event-stream"
+        )
+
+    async def generate_events():
+        try:
+            yield "data: Extracting course PDF...\n\n"
+            course_text = pdf_parser.extract_text_from_pdf(course_content)
+
+            yield "data: Extracting objectives PDF...\n\n"
+            objectives_text = pdf_parser.extract_text_from_pdf(objectives_content)
+
+            # =============================
+            # Sauvegarde brute
+            # =============================
+            jd_doc = {
+                "raw_course_text": course_text,
+                "raw_objectives_text": objectives_text,
+                "created_at": datetime.datetime.utcnow()
+            }
+            jd_id = str(jd_collection.insert_one(jd_doc).inserted_id)
+
+            # =============================
+            # Extraction structurée
+            # =============================
+            yield "data: Structuring course content...\n\n"
+            structured_course = extractor.extract_course_data11(course_text)
+
+            yield "data: Extracting learning objectives...\n\n"
+            structured_objectives = extractor.extract_course_objectives(objectives_text)
+
+            # =============================
+            # Sauvegarde objectifs locale
+            # =============================
+            objectifs_dir = os.path.join(save_dir, "objectifs")
+            os.makedirs(objectifs_dir, exist_ok=True)
+
+            objectifs_path = os.path.join(objectifs_dir, f"{jd_id}.json")
+            with open(objectifs_path, "w", encoding="utf-8") as f:
+                json.dump(structured_objectives, f, ensure_ascii=False, indent=2)
+
+            # =============================
+            # Génération du test
+            # =============================
+            yield "data: Generating certification test...\n\n"
+
+            generated_test = gpt_generator.generate_certification_test_from_course11(
+                course_structured_data=structured_course,
+                course_objectives=structured_objectives,
+                seniority_input=seniority_input,
+                num_questions=number_of_questions,
+                language_input=language_input
+            )
+
+            # =============================
+            # Sauvegarde test
+            # =============================
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
+            test_path = os.path.join(save_dir, f"test-{timestamp}.json")
+
+            with open(test_path, "w", encoding="utf-8") as f:
+                json.dump(
+                    {
+                        "course_id": jd_id,
+                        "objectives_path": objectifs_path,
+                        "generated_test": generated_test
+                    },
+                    f,
+                    ensure_ascii=False,
+                    indent=2
+                )
+
+            yield f"data: __DONE__{json.dumps({'course_id': jd_id, 'test_path': test_path})}\n\n"
+
+        except Exception as e:
+            yield f"data: Error: {str(e)}\n\n"
+
+    return StreamingResponse(generate_events(), media_type="text/event-stream")
+
 # upload with SSE
 @router.post("/upload-stream")
 async def upload_stream(
@@ -112,6 +205,108 @@ async def upload_stream(
             yield f"data: Error: {str(e)}\n\n"
 
     return StreamingResponse(generate_events(), media_type="text/event-stream")
+
+
+@router.post("/upload-stream11")
+async def upload_stream11(
+    request: Request,
+    file: UploadFile = File(...),
+    seniority_input: str = Form(...),
+    language_input: str = Form(...),
+    number_of_questions: int = Form(30)
+):
+
+    try:
+        content = await file.read()
+        print("📄 File read (bytes):", len(content))
+    except Exception as e:
+        return StreamingResponse(
+            iter([f"data: Error reading file: {str(e)}\n\n"]),
+            media_type="text/event-stream"
+        )
+
+    async def generate_events():
+        try:
+            yield "data: Uploading file...\n\n"
+
+            yield "data: Extracting text from PDF...\n\n"
+            text = pdf_parser.extract_text_from_pdf(content)
+            print("📝 Text preview:", text[:120])
+
+            yield "data: Structuring course content...\n\n"
+            course_data = extractor.extract_course_data11(text)
+            print("📊 Structured course data extracted")
+            print(course_data)
+
+            jd_doc = {
+                "raw_text": text,
+                "structured_course": course_data
+            }
+            jd_result = jd_collection.insert_one(jd_doc)
+            jd_id = str(jd_result.inserted_id)
+
+            yield f"data: Generating {number_of_questions} certification questions...\n\n"
+
+            generated_test = gpt_generator.generate_certification_test_from_course11(
+                course_structured_data=course_data,
+                seniority_input=seniority_input,
+                num_questions=number_of_questions,
+                language_input=language_input
+            )
+
+            print("✅ Test generated successfully")
+
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
+            file_name = f"certification-test-{timestamp}.json"
+            file_path = os.path.join(save_dir, file_name)
+
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(
+                    {
+                        "course_id": jd_id,
+                        "seniority": seniority_input,
+                        "language": language_input,
+                        "num_questions": number_of_questions,
+                        "generated_test": generated_test
+                    },
+                    f,
+                    ensure_ascii=False,
+                    indent=2
+                )
+
+            test_doc = {
+                "course_id": jd_id,
+                "test_data": generated_test,
+                "seniority": seniority_input,
+                "language": language_input,
+                "num_questions": number_of_questions,
+                "local_file_path": file_path
+            }
+            test_result = test_collection.insert_one(test_doc)
+
+            result = {
+                "course_id": jd_id,
+                "generated_test": generated_test,
+                "local_file_path": file_path
+            }
+
+            yield f"data: __DONE__{json.dumps(result)}\n\n"
+
+        except Exception as e:
+            print("❌ Error:", str(e))
+            yield f"data: Error: {str(e)}\n\n"
+
+    return StreamingResponse(generate_events(), media_type="text/event-stream")
+
+
+
+
+
+
+
+
+
+
 
 # upload without SSE
 @router.post("/upload")

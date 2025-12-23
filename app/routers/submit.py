@@ -49,7 +49,7 @@ async def submit_test(submission: TestSubmission):
 @router.post("/analyze-behavior")
 async def analyze_behavior(data: dict):
     behavior_data = data.get("behavior_data")
-
+    print("------------->behavior_data : ", behavior_data)
     prompt = f"""
 You are a professional hiring behavior analyst AI.
 

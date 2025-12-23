@@ -4,7 +4,169 @@ import openai
 import json
 import re
 
-# load_dotenv()
+
+load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+
+def extract_course_objectives(objectives_text: str) -> dict:
+    if not objectives_text or len(objectives_text.strip()) < 50:
+        raise ValueError("Objectives PDF text is empty or too short")
+
+    prompt = f"""
+You are a senior academic curriculum engineer.
+
+Your task is to extract ONLY the LEARNING OBJECTIVES from the document below.
+
+STRICT RULES:
+- Extract ONLY objectives (ignore intro, examples, explanations)
+- Use the EXACT wording from the document
+- Do NOT invent objectives
+- Do NOT summarize
+- If objectives are implicit, extract the closest explicit sentences
+
+OUTPUT FORMAT (VALID JSON ONLY):
+
+{{
+  "objectives": [
+    {{
+      "objective_id": "O1",
+      "objective_text": "",
+      "weight_percentage": 0
+    }}
+  ]
+}}
+
+WEIGHT RULES:
+- Total weight_percentage MUST equal 100
+- Core objectives = higher weight
+- Minor objectives = lower weight
+
+DOCUMENT:
+\"\"\"
+{objectives_text}
+\"\"\"
+
+Return ONLY valid JSON. No markdown. No commentary.
+"""
+
+    response = openai.ChatCompletion.create(
+        model="gpt-4o",
+        temperature=0.1,
+        messages=[
+            {
+                "role": "system",
+                "content": "You extract academic objectives with zero hallucination."
+            },
+            {"role": "user", "content": prompt}
+        ]
+    )
+
+    raw = response.choices[0].message.content.strip()
+
+    # 🔥 DEBUG CRITIQUE (OBLIGATOIRE)
+    print("\n===== RAW GPT OBJECTIVES OUTPUT =====")
+    print(raw)
+    print("====================================\n")
+
+    cleaned = re.sub(r"```(?:json)?|```", "", raw).strip()
+
+    if not cleaned.startswith("{"):
+        raise ValueError(
+            "GPT did not return JSON for objectives extraction:\n" + cleaned[:500]
+        )
+
+    return json.loads(cleaned)
+
+
+
+
+def extract_course_data11(course_text: str) -> dict:
+    prompt = f"""
+You are a senior instructional designer and academic content analyst.
+
+Your task is to extract and STRUCTURE the course content below WITHOUT interpretation.
+This structured output will be used as the ONLY knowledge source for exam generation.
+
+⚠️ CRITICAL RULES (NON-NEGOTIABLE):
+- Do NOT summarize, rephrase, or infer.
+- Use ONLY the exact wording from the course when capturing content.
+- Every topic MUST include the original source text excerpt.
+- If something is unclear or fragmented, capture it as-is.
+- NEVER add external knowledge.
+
+---
+
+🎯 OUTPUT FORMAT (VALID JSON ONLY)
+
+{{
+  "course_metadata": {{
+    "course_title": "",
+    "domain": "",
+    "language": "",
+    "source_type": "pdf",
+    "extraction_confidence": "high | medium | low"
+  }},
+  "topics": [
+    {{
+      "topic_id": "T1",
+      "topic_label": "",
+      "topic_type": "definition | rule | process | calculation | classification | exception | concept | procedure | case",
+      "source_text": {{
+        "raw_excerpt": "",
+        "start_context": "",
+        "end_context": ""
+      }},
+      "structured_content": {{
+        "definitions": [],
+        "key_points": [],
+        "rules": [],
+        "constraints": [],
+        "exceptions": [],
+        "steps": [],
+        "values": [
+          {{
+            "label": "",
+            "value": "",
+            "unit": "",
+            "context": ""
+          }}
+        ],
+        "examples": []
+      }},
+      "pedagogical_role": {{
+        "importance": "core | important | complementary",
+        "assessment_recommendation": "memorization | application | calculation | case_analysis",
+        "risk_of_confusion": "low | medium | high"
+      }}
+    }}
+  ]
+}}
+
+---
+
+📘 COURSE CONTENT
+\"\"\"{course_text}\"\"\"
+
+Return ONLY valid JSON. No markdown. No commentary.
+"""
+
+    response = openai.ChatCompletion.create(
+        model="gpt-4o",
+        temperature=0.1,
+        messages=[
+            {"role": "system", "content": "You extract academic content with zero hallucination."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+
+    return json.loads(response.choices[0].message.content)
+
+
+
+
+
+
 
 
 def extract_job_data(job_description_text: str) -> dict:
@@ -58,9 +220,6 @@ Here is the job description:
     except json.JSONDecodeError as e:
         raise ValueError(f"Failed to parse cleaned GPT response: {e}\nCleaned response was: {result_text}")
 
-
-load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
 def extract_course_data(course_text: str) -> dict:
     """
@@ -123,3 +282,120 @@ Expected JSON format:
         return json.loads(result_text)
     except json.JSONDecodeError as e:
         raise ValueError(f"Failed to parse GPT response: {e}\nResponse:\n{result_text}")
+
+
+def extract_course_intelligence(course_text: str) -> dict:
+    prompt = f"""
+You are a senior subject-matter expert and academic content analyst.
+
+Your task is to extract a STRICT, STRUCTURED, and FACTUAL knowledge base
+from the provided course content.
+
+This output will be used as the ONLY source of truth
+for generating certification exam questions.
+
+==================================================
+CRITICAL EXTRACTION RULES (ABSOLUTE)
+==================================================
+
+- DO NOT summarize loosely
+- DO NOT generalize
+- DO NOT invent or infer missing rules
+- DO NOT use external knowledge
+- ONLY extract what is explicitly stated in the course
+
+If a value, rate, threshold, or rule is NOT present → DO NOT create it.
+
+==================================================
+WHAT YOU MUST EXTRACT
+==================================================
+
+1️⃣ COURSE METADATA
+- Course domain (finance, accounting, taxation, economics, mixed)
+- Year, version, or legal reference IF explicitly mentioned
+
+2️⃣ MAIN TOPICS (MANDATORY)
+For each main topic:
+- Topic name
+- Short description (based ONLY on the course)
+- Explicit rules
+- Numeric values (rates, thresholds, deductions)
+- Conditions of application
+- Formulas (if any)
+- Explicit examples from the course (if present)
+
+3️⃣ NUMERIC VALUES INDEX
+- All rates
+- All thresholds
+- All fixed amounts
+- Units and scope
+
+4️⃣ EXPLICIT LIMITATIONS
+- What the course DOES NOT define
+- Missing rates or rules that must NOT be assumed
+
+==================================================
+OUTPUT FORMAT (STRICT JSON ONLY)
+==================================================
+
+{{
+  "course_domain": "",
+  "course_version_or_year": "",
+  "main_topics": [
+    {{
+      "topic_name": "",
+      "description": "",
+      "rules": [
+        {{
+          "rule_type": "",
+          "description": "",
+          "values": {{}},
+          "conditions": ""
+        }}
+      ],
+      "formulas": [
+        {{
+          "name": "",
+          "formula_expression": "",
+          "variables_explained": {{}}
+        }}
+      ],
+      "examples_if_any": []
+    }}
+  ],
+  "explicit_values_index": {{
+    "rates": [],
+    "thresholds": [],
+    "fixed_deductions": []
+  }},
+  "forbidden_assumptions": []
+}}
+
+==================================================
+COURSE CONTENT
+==================================================
+
+\"\"\"{course_text}\"\"\"
+
+Return ONLY valid JSON.
+"""
+
+    chat_completion = openai.ChatCompletion.create(
+        model="gpt-4o",
+        temperature=0.2,
+        messages=[
+            {"role": "system", "content": "You are an expert in pedagogy and knowledge structuring."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+
+    result_text = chat_completion.choices[0].message.content.strip()
+
+    # Nettoyer d'éventuels délimiteurs JSON
+    result_text = re.sub(r"```json|```", "", result_text).strip()
+
+    try:
+        return json.loads(result_text)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Failed to parse GPT response: {e}\nResponse:\n{result_text}")
+
